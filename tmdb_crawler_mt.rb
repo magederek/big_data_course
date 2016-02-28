@@ -49,8 +49,7 @@ class TMDbCrawler
 
   # begin to craw all the information of movies
   def self.begin_crawl_movies
-    GC.enable
-    # analyze_moive_page_thread.run
+    GC.enable # make sure Ruby's Garbage Collection is enable
     FileUtils.mkdir_p @@SavePathBase unless Dir.exist? @@SavePathBase
     url_path = '/discover/movie'
     movie_list_query = {
@@ -101,6 +100,7 @@ class TMDbCrawler
       save_to_log("Fatal ERROR: cannot write file #{@@MOVIES_DB_FILE}")
     end
 
+    # Create a thread to output the current count of movie analyzing threads
     Thread.new do
       while(true)
         sleep(1)
@@ -109,17 +109,19 @@ class TMDbCrawler
       end
     end
 
+    # Iterately analyze every pages in every list
     for page_number in 1..30
       # create a copy of iterator to avoid reading incorrect number in threadds
-      @@mutex.lock
       tmp_page_number = page_number.to_s
-      @@mutex.unlock
       movie_list_query_clone = movie_list_query.clone
 
+      # Wait until current list analyzing threads is not full
       while @@analyzing_list_threads >= @@MAX_LIST_THREADS
         sleep(Random.rand / 2)
         Thread.pass
       end
+
+      # Start a thread for downloading and analyzing a list page
       download_list_thread = Thread.new do
         @@mutex.lock
         @@analyzing_list_threads += 1
@@ -139,7 +141,6 @@ class TMDbCrawler
         headers @@headers_field
 
         # download the movie_list_page, and get the file_path
-
         list_file_path = download_movie_list(url_path, movie_list_query_clone)
 
         # get all the movie_urls from the list_page
@@ -154,16 +155,17 @@ class TMDbCrawler
             # start the analyzing thread
             run_analyze_movie_thread
 
-            # call analyze_movie_page to analyze the content using new threads
+            # if download successfully, add it to the analysis queue pending,
+            # which is arranged by run_analyze_movie_thread
             @@analysis_queue_movie_page << movie_file_path if movie_file_path != nil
           end
-          # download_movie_threads << thread
         end
-        # download_movie_threads.each {|thread| thread.run(5)}
+        # analysis completed, quit the analyzing_list_threads
         @@mutex.lock
         @@analyzing_list_threads -= 1
         @@mutex.unlock
       end
+
       Thread.pass
       sleep 0.3 # MUST sleep for more than 0.2 secs to avoid the server block the connection 
       GC.start # start garbage collection
@@ -510,43 +512,21 @@ class TMDbCrawler
         end
       end
 
-      # call analyze_crew_list to get information about crews
-
-      # download cast-list page named by ID_cast.html
-      retry_count = 0
-      begin
-      rescue Net::OpenTimeout
-        retry_count += 1
-        retry unless retry_count > 2
-      rescue => ex
-        save_to_log("Fail[#{movie[:tmdb_id]}]: RETRY OVERTIME - download #{base_uri}#{crew_url}")
-      end
-
-      # call analyze_cast_list to get information about cast
-
-
       # download reviews page named by ID_reviews.html
       begin
+        # TODO: Pending to complete if needed
       rescue Net::OpenTimeout
         timeout_try += 1
         retry unless timeout_try > 2
       rescue => ex
-        save_to_log("Fail[#{movie[:tmdb_id]}]: RETRY OVERTIME - download #{base_uri}#{crew_url}")
+        save_to_log("Fail[Download Reviews #{movie[:tmdb_id]}]: #{base_uri}#{crew_url} - #{ex}")
       end
 
       # call analyze_reviews to get information about reviews
-
-
-      # download recommandation page named by ID_crew.html
-      begin
-      rescue Net::OpenTimeout
-        timeout_try += 1
-        retry unless timeout_try > 2
-      rescue => ex
-        save_to_log("Fail[#{movie[:tmdb_id]}]: RETRY OVERTIME - download #{base_uri}#{crew_url}")
-      end
+      # TODO: Pending to complete if needed
 
       # call analyze_recommandation to get information about recommandation
+      # TODO: Pending to complete if needed
 
       # try to write the info of the movie to #{MOVIES_DB_FILE}
       retry_count = 0
@@ -570,25 +550,6 @@ class TMDbCrawler
     return true
   end
 
-  # analyze the crew list to get all crew brief information
-  def self.analyze_crew_list(crew_file_path)
-  end
-
-  # analyze the crew list to get all crew brief information
-  def self.analyze_cast_list(cast_file_path)
-
-  end
-
-  # analyze the reviews of the movie for further analysis
-  def self.analyze_reviews(reviews_file_path)
-
-  end
-
-  # analyze the recommandation page for further analysis
-  def self.analyze_recommandation(recommandation_file_path)
-
-  end
-
   def self.save_to_log(message)
     begin
       File.open @@LogFile, "a" do |file|
@@ -601,12 +562,10 @@ class TMDbCrawler
       retry
     end
   end
-
 end
+
 # OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 TMDbCrawler.begin_crawl_movies
-
-
 
 
 
