@@ -94,7 +94,7 @@ class TMDbCrawler
     puts "Total page of movies: #{total_pages_number}"
 
 
-    for page_number in 1..1800
+    for page_number in 1..2
     # for page_number in 1..total_pages_number.to_i
       movie_list_query["page"] = page_number.to_s
 
@@ -144,7 +144,11 @@ class TMDbCrawler
   # RETURN: the relative path of the saved file
   def self.download_movie_list(url_path, query)
     begin
+      timeout_try = 0
       movie_list_page = get url_path, query: query
+    rescue Net::OpenTimeout
+      timeout_try += 1
+      retry unless timeout_try > 3
     rescue => ex
       save_to_log("Failed: download #{base_uri}#{url_path}: #{ex}")
     end
@@ -183,6 +187,9 @@ class TMDbCrawler
     $stdout.flush
     begin
       movie_page = get url_path
+    rescue Net::OpenTimeout
+      timeout_try += 1
+      retry unless timeout_try > 2
     rescue => ex
       save_to_log("Failed: download #{base_uri}#{url_path} page=#{page_num}: #{ex}")
       return nil
@@ -224,17 +231,41 @@ class TMDbCrawler
     # movie['language'] = 
     puts movie.inspect
 
-    # download crew-list page named by ID_crew.html
-    begin
-    rescue => ex
-      save_to_log("Failed: download #{base_uri}#{url_path}: #{ex}")
-    end
-    
+    # download crew and cast page
+    crew_url_html = movie_page.at_css 'html body div#container div#movie div#mainCol p.more a'
+    crew_url_html = nil
+    if crew_url_html != nil && crew_url_html['href'] != nil
+      crew_url = crew_url_html['href']
+      crew_page = nil
+      begin
+        crew_page = get crew_url
+      rescue Net::OpenTimeout
+        timeout_try += 1
+        retry unless timeout_try > 2
+      rescue => ex
+        save_to_log("Failed: download #{base_uri}#{url_path}: #{ex}")
+      end
+      crew_page = Nokogiri::HTML(crew_page)
+        table_name = table['id']
+        directing = Hash.new
+        production = Hash.new
+        cast = Hash.new
+        directing_table = crew_page.at_css 'html body div#container div#movie div#mainCol table#Directing tbody'
+        directing_table.css 'tr' do |row|
+          director_name = row.css('td a') == nil ? row.css('td')[0].content : directing_table.css('td a').content
+          director_position = row.css('td')[1].content
+        end
+      end
+
     # call analyze_crew_list to get information about crews
-    
+
+    end
 
     # download cast-list page named by ID_cast.html
     begin
+    rescue Net::OpenTimeout
+      timeout_try += 1
+      retry unless timeout_try > 2
     rescue => ex
       save_to_log("Failed: download #{base_uri}#{url_path}: #{ex}")
     end
@@ -244,6 +275,9 @@ class TMDbCrawler
 
     # download reviews page named by ID_reviews.html
     begin
+    rescue Net::OpenTimeout
+      timeout_try += 1
+      retry unless timeout_try > 2
     rescue => ex
       save_to_log("Failed: download #{base_uri}#{url_path}: #{ex}")
     end
@@ -253,6 +287,9 @@ class TMDbCrawler
 
     # download recommandation page named by ID_crew.html
     begin
+    rescue Net::OpenTimeout
+      timeout_try += 1
+      retry unless timeout_try > 2
     rescue => ex
       save_to_log("Failed: download #{base_uri}#{url_path}: #{ex}")
     end
@@ -264,7 +301,7 @@ class TMDbCrawler
 
   # analyze the crew list to get all crew brief information
   def self.analyze_crew_list(crew_file_path)
-end
+  end
 
   # analyze the crew list to get all crew brief information
   def self.analyze_cast_list(cast_file_path)
