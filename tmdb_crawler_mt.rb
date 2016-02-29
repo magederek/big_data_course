@@ -28,7 +28,7 @@ class TMDbCrawler
   # Variable for multi-analyzer methods to analyze consecutively
   @@analysis_queue_movie_list = Queue.new
   @@analyzing_list_threads = 0
-  @@MAX_LIST_THREADS = 20 # 20 the better amoung my testing
+  @@MAX_LIST_THREADS = 10 # 10 the better amoung my testing
 
   # Queue and Variable for analyzing movie pages
   # Simotineously maximun MAX_ANALYZING_THREADS pages
@@ -49,7 +49,7 @@ class TMDbCrawler
 
   # begin to craw all the information of movies
   def self.begin_crawl_movies
-    GC.enable # make sure Ruby's Garbage Collection is enable
+    # GC.enable # make sure Ruby's Garbage Collection is enable
     FileUtils.mkdir_p @@SavePathBase unless Dir.exist? @@SavePathBase
     url_path = '/discover/movie'
     movie_list_query = {
@@ -102,33 +102,36 @@ class TMDbCrawler
 
     # Create a thread to output the current count of movie analyzing threads
     Thread.new do
+      count = 0
       while(true)
-        sleep(1)
-        puts "THREAD_SIZE: #{@@analyzing_movie_threads}"
+        Thread.pass
+        sleep(2)
+        count += 2
+        puts "ANALYZING THREAD_SIZE: #{@@analyzing_movie_threads}"
+        if count > 9
+          puts "TOTAL THREADS COUNT: #{Thread.list.size}"
+          count = 0
+        end
         $stdout.flush
       end
     end
-
+    
     # Iterately analyze every pages in every list
-    for page_number in 1..30
+    #for page_number in 1..(total_pages_number.to_i)
+    for page_number in 1..100
       # create a copy of iterator to avoid reading incorrect number in threadds
-      tmp_page_number = page_number.to_s
       movie_list_query_clone = movie_list_query.clone
 
       # Wait until current list analyzing threads is not full
       while @@analyzing_list_threads >= @@MAX_LIST_THREADS
-        sleep(Random.rand / 2)
         Thread.pass
+        sleep(Random.rand / 2)
       end
 
       # Start a thread for downloading and analyzing a list page
-      download_list_thread = Thread.new do
-        @@mutex.lock
-        @@analyzing_list_threads += 1
-        @@mutex.unlock
-
+      download_list_thread = Thread.new page_number do |tmp_page_number|
         # for page_number in 1..total_pages_number.to_i
-        movie_list_query_clone["page"] = tmp_page_number
+        movie_list_query_clone["page"] = tmp_page_number.to_s
         puts "Current Page: #{movie_list_query_clone["page"]}"
         $stdout.flush
 
@@ -149,15 +152,17 @@ class TMDbCrawler
         # begin handling each movie_urls using multi-threads
         movie_urls.each do |movie_url|
           thread = Thread.new do
+            Thread.pass
             sleep(Random.rand / 5)  # each thread sleeps for 0-200ms, to avoid concurrent running
             movie_file_path = download_movie_page(movie_url, tmp_page_number)
-
-            # start the analyzing thread
-            run_analyze_movie_thread
 
             # if download successfully, add it to the analysis queue pending,
             # which is arranged by run_analyze_movie_thread
             @@analysis_queue_movie_page << movie_file_path if movie_file_path != nil
+
+            # start the analyzing thread
+            run_analyze_movie_thread
+
           end
         end
         # analysis completed, quit the analyzing_list_threads
@@ -166,16 +171,21 @@ class TMDbCrawler
         @@mutex.unlock
       end
 
+      @@mutex.lock
+      @@analyzing_list_threads += 1
+      @@mutex.unlock
+
       Thread.pass
       sleep 0.3 # MUST sleep for more than 0.2 secs to avoid the server block the connection 
-      GC.start # start garbage collection
+      # GC.start # start garbage collection
     end
 
     # Consider whether the crawl is done. When it is done,
     # only the main thread and the output status thread will be running
     while Thread.list.size != 2
-      puts "Total Theards: #{Thread.list.size}"
-      sleep 1
+      # puts "Total Threads: #{Thread.list.size}"
+      Thread.pass
+      sleep 3
     end
 
     # Finally formating the DB file
@@ -201,6 +211,7 @@ class TMDbCrawler
       movie_list_page = get url_path, query: query
     rescue
       timeout_try += 1
+      Thread.pass
       sleep(Random.rand / 10)
       puts "retrying #{query['page']}"
       retry unless timeout_try > 5
@@ -217,6 +228,7 @@ class TMDbCrawler
         file.flock(File::LOCK_UN)
       end
     rescue
+      Thread.pass
       sleep(Random.rand / 10)
       retry
     end
@@ -266,14 +278,15 @@ class TMDbCrawler
   end
 
   def self.run_analyze_movie_thread
+    # @@mutex.lock
     return if @@analyze_movie_page_thread != nil && @@analyze_movie_page_thread.status != false
-    exit_timeout = 5 * @@TIMEOUT + 1
-    # exit_timeout = 5
-    warning_array = [exit_timeout*4/7, exit_timeout*5/7, exit_timeout*6/7]
-    # puts exit_timeout
-    # p warning_array
+    @@analyze_movie_page_thread |= Thread.new do
     puts("======== Run Thread Start =========")
-    @@analyze_movie_page_thread = Thread.new do
+    exit_timeout = 5 * @@TIMEOUT + 1
+    # warning_period = exit_timeout / 3
+    warning_array = [exit_timeout*4/7, exit_timeout*5/7, exit_timeout*6/7]
+    # p warning_array
+    # puts exit_timeout
       idle_sec = 0
       while true 
         begin
@@ -291,43 +304,48 @@ class TMDbCrawler
             end
             break
           else
+            puts "waiting for analyzing ..." if warning_array.include? idle_sec
+            # puts "waiting for analyzing ..." if idle_sec % warning_period == 0
+            Thread.pass
             sleep 1 
             idle_sec += 1
-            puts "waiting for analyzing ..." if warning_array.include? idle_sec
-            Thread.pass
           end
         rescue => ex
           save_to_log("Fatal Fail: #{ex}")
+          puts ("Fatal Fail: #{ex}")
+          exit 1
         end
       end
       puts("======== Run Thread Exit =========")
     end
+    # @@mutex.unlock
   end
 
   # analyze the movie's page to get brief information
   def self.analyze_movie_page
     if @@analysis_queue_movie_page.empty?
-      #puts "THREAD_EMPTY: #{@@analyzing_movie_threads}"
+      # puts "THREAD_EMPTY: #{@@analyzing_movie_threads}"
       return false
     elsif @@analyzing_movie_threads >= @@MAX_ANALYZING_THREADS
-      #puts "THREAD_FULL: #{@@analyzing_movie_threads}"
+      # puts "THREAD_FULL: #{@@analyzing_movie_threads}"
+      Thread.pass
       sleep(rand / 10)
       return true
     end
-    #puts "THREAD_SIZE: #{@@analyzing_movie_threads}"
+    # puts "THREAD_RUNNING: #{@@analyzing_movie_threads}"
 
     analyzing_thread = Thread.new do
       movie_file_path = @@analysis_queue_movie_page.empty? ? nil : @@analysis_queue_movie_page.shift
       if movie_file_path == nil
-        # @@analyzing_movie_threads -= 1
+        @@mutex.lock
+        @@analyzing_movie_threads -= 1
+        @@mutex.unlock
+        Thread.pass
         sleep 0.5
         Thread.exit
       end
       #puts "analyzing #{movie_file_path} ..."
       #$stdout.flush
-      @@mutex.lock
-      @@analyzing_movie_threads += 1
-      @@mutex.unlock
 
       # try to read the movie_page file
       movie_page = nil
@@ -336,6 +354,7 @@ class TMDbCrawler
           movie_page = Nokogiri::HTML(file)
         end
       rescue => ex
+        Thread.pass
         sleep(rand / 20)
         retry
       end
@@ -504,6 +523,7 @@ class TMDbCrawler
           movie[:casts] = casts
         rescue  Net::OpenTimeout, Net::ReadTimeout => ex
           retry_cast_count += 1
+          Thread.pass
           sleep(Random.rand / 10)
           retry unless retry_cast_count > 5
           save_to_log("Fail[Download Casts of #{movie[:tmdb_id]}]: download #{base_uri}#{crew_url} - #{ex}")
@@ -538,6 +558,7 @@ class TMDbCrawler
         #rescue RuntimeError => ex
         #  save_to_log("Fail: #{ex} [#{Time.now}]")
       rescue
+        Thread.pass
         sleep(rand / 10)
         retry
       end
@@ -547,6 +568,11 @@ class TMDbCrawler
       @@mutex.unlock
       #sleep 0.5
     end
+
+    @@mutex.lock
+    @@analyzing_movie_threads += 1
+    @@mutex.unlock
+
     return true
   end
 
@@ -558,6 +584,7 @@ class TMDbCrawler
         file.flock(File::LOCK_UN)
       end
     rescue
+      Thread.pass
       sleep(Random.rand / 10)
       retry
     end
