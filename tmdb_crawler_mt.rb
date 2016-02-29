@@ -117,8 +117,8 @@ class TMDbCrawler
     end
     
     # Iterately analyze every pages in every list
-    #for page_number in 1..(total_pages_number.to_i)
-    for page_number in 1..100
+    for page_number in 1..(total_pages_number.to_i)
+    # for page_number in 1..1
       # create a copy of iterator to avoid reading incorrect number in threadds
       movie_list_query_clone = movie_list_query.clone
 
@@ -448,6 +448,30 @@ class TMDbCrawler
         # save_to_log("Fail[#{movie[:tmdb_id]}]: #{ex}")
       end
 
+      # try to get Genres of the movie
+      begin
+        genres = []
+        movie_page.at_css('html body div#container div#movie div#mainCol span#genres ul.tags').css('li').each do |g|
+          genres << g.content
+        end
+        movie[:genres] = genres
+      rescue
+        # save_to_log("Fail[#{movie[:tmdb_id]}]: #{ex}")
+      end
+
+      # try to get the production company of the movie
+      begin 
+        companies = []
+        movie_page.at_css('html body div#container div#movie div#mainCol').to_s =~ /<h3.*?>\s*?Production\s+Companies\s*?<\/h3\s*?>\s*?<p.*?>(.*?)<\/p\s*?>/
+        companies_html = Nokogiri::HTML($1)
+        companies_html.css('a').each do |company|
+          companies << company.content
+        end
+        movie[:companies] = companies
+      rescue
+        # save_to_log("Fail[#{movie[:tmdb_id]}]: #{ex}")
+      end
+      
       # try to get metadata of the movie
       begin
         left_column = movie_page.at_css 'html body div#container div#movie div#leftCol'
