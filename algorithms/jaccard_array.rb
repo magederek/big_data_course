@@ -19,4 +19,4 @@ class JaccardArray
   end
 end
 
-puts JaccardArray.sim(["Barack Obama", "John", "Derek"], ["John", "B. Obama", "David"])
+# puts JaccardArray.sim(["Barack Obama", "John", "Derek"], ["John", "B. Obama", "David"])

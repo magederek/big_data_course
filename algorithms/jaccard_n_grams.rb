@@ -31,8 +31,8 @@ class JaccardNGrams
   end
 end
 
-puts JaccardNGrams.bigrams_sim("Paul", "Pual")
-puts JaccardNGrams.trigrams_sim("Paul", "Pual")
-puts JaccardNGrams.trigrams_sim("Johnson", "Jones")
-puts JaccardNGrams.bigrams_sim("B. Obama", "Barack Obama")
-puts JaccardNGrams.trigrams_sim("B. Obama", "Barack Obama")
+# puts JaccardNGrams.bigrams_sim("Paul", "Pual")
+# puts JaccardNGrams.trigrams_sim("Paul", "Pual")
+# puts JaccardNGrams.trigrams_sim("Johnson", "Jones")
+# puts JaccardNGrams.bigrams_sim("B. Obama", "Barack Obama")
+# puts JaccardNGrams.trigrams_sim("B. Obama", "Barack Obama")

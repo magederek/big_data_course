@@ -48,13 +48,13 @@ class MongeElkan
 end   
 
 
-a = [" J", "Jo", "on", "ne", "es", "s "]
-b = [" J", "Jo", "oh", "hn", "ns", "so", "on", "n "]
-#puts Jaccard.coefficient(a, b)
-puts MongeElkan.jaro_winkler_sim("George Bush", "George W. Bush");
-puts MongeElkan.jaro_winkler_sim("George W. Bush", "George Bush");
-puts MongeElkan.jaro_winkler_simavg("George W. Bush", "George Bush");
-puts MongeElkan.jaro_winkler_simavg("B. Obama", "Barack Obama")
-puts MongeElkan.jaro_winkler_simavg("Paul Jones", "Jones, Paul")
-puts MongeElkan.jaro_winkler_simavg("Paul", "Pual")
+# a = [" J", "Jo", "on", "ne", "es", "s "]
+# b = [" J", "Jo", "oh", "hn", "ns", "so", "on", "n "]
+# puts Jaccard.coefficient(a, b)
+# puts MongeElkan.jaro_winkler_sim("George Bush", "George W. Bush");
+# puts MongeElkan.jaro_winkler_sim("George W. Bush", "George Bush");
+# puts MongeElkan.jaro_winkler_simavg("George W. Bush", "George Bush");
+# puts MongeElkan.jaro_winkler_simavg("B. Obama", "Barack Obama")
+# puts MongeElkan.jaro_winkler_simavg("Paul Jones", "Jones, Paul")
+# puts MongeElkan.jaro_winkler_simavg("Paul", "Pual")
 
