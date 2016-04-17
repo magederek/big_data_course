@@ -2,6 +2,7 @@ require 'mongoid'
 require 'json'
 require 'pp'
 require 'date'
+require 'nokogiri'
 #require_relative './fused_actor'
 
 Encoding.default_external = 'UTF-8'
@@ -24,7 +25,8 @@ class TmdbActor
   field :known_for, type: Array
   field :acting, type: Hash
   
-  def json_to_db nom_of_final = 3000
+  def self.json_to_db nom_of_final = 20000
+    Nokogiri::
     Mongoid.load!("./mongoid.yml", :tmdb)
 
     num_of_casts = 90202
@@ -123,6 +125,7 @@ class TmdbActor
     end
 
     puts "Saving to Actors collection..."
+    TmdbActor.delete_all
     nom_of_final.times do |i|
       unless actors[i].save
         puts "False: #{i}"
@@ -135,5 +138,5 @@ class TmdbActor
   end
 end
 
-
+TmdbActor.json_to_db
 

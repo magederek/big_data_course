@@ -1,63 +1,62 @@
 require 'mongoid'
-require 'mongo'
 require 'pp'
 require 'date'
 require_relative '../algorithms/jaccard_array'
 require_relative '../algorithms/jaccard_n_grams'
 require_relative '../algorithms/monge_elkan'
-require_relative './tmdb_actor'
+require_relative './tmdb_movie'
 require_relative './imdb_query'
 
 Mongoid.load!("./mongoid.yml", :fused)
 
-class FusedActor
+class FusedMovie
   include Mongoid::Document
-  store_in database: 'movie_actor'
-  field :name, type: String
-  field :birthday, type: Date
-  field :gender, type: String
-  field :place_of_birth, type: String
-  field :nationality, type: String
-  field :known_credits, type: Integer
-  field :adult_actor, type: Boolean
-  field :years_active, type: String
+  store_in database: 'mongoid'
+  field :title, type: String
+  field :year, type: Integer
+  field :rating, type: Float
+  field :directors, type: Array
+  field :casts, type: Hash
+  field :main_casts, type: Array
+  field :total_time, type: Integer
+  field :languages, type: Array
   field :alias, type: Array
-  field :relative, type: Hash
-  field :biography, type: String
-  field :known_for, type: Array
+  field :country, type: Array
+  field :genre, type: Array
+  field :writers, type: Array
+  field :filming_locations, type: Array
+  field :keywords, type: Array
 
-  @@client = Mongo::Client.new(['127.0.0.1:27018'], :database => 'movieactor', :monitoring => false)
+  @@client = Mongo::Client.new(['127.0.0.1:27018'], :database => 'moviemovie', :monitoring => false)
 
-  def self.parse_tmdb_actor actor
-    if actor.class != TmdbActor
+  def self.parse_tmdb_movie movie
+    if movie.class != Tmdbmovie
       return nil
     else
-      fused_actor = FusedActor.new
-      fused_actor.name = actor.name
-      fused_actor.birthday = actor.birthday
-      fused_actor.gender = actor.gender
-      fused_actor.place_of_birth = actor.place_of_birth
-      fused_actor.known_credits = actor.known_credits
-      fused_actor.adult_actor = actor.adult_actor
-      fused_actor.alias = actor.alias
-      fused_actor.biography = actor.biography
-      fused_actor.known_for = actor.known_for
-      return fused_actor
+      fused_movie = FusedMovie.new
+      fused_movie.title = movie.title
+      fused_movie.year = movie.year
+      fused_movie.rating = movie.rating
+      fused_movie.directors = movie.directors
+      fused_movie.casts = movie.casts
+      fused_movie.main_casts = movie.main_casts
+      fused_movie.total_time = movie.total_time
+      fused_movie.languages = movie.languages
+      fused_movie.alias = movie.alias
+      fused_movie.genre = movie.genre
+      fused_movie.writers = movie.writers
+      fused_movie.keywords = movie.keywords
+      return fused_movie
     end
   end
 
   # load from tmdb collection by Array of _id
   # ids: Array of _id (String).
   def self.read_tmdb_by_ids
-
-    tmdb_actors = TmdbActor.count
-    puts tmdb_actors
   end
 
   # load from tmdb collection of all items
   def self.read_tmdb
-    tmdb_actors = TmdbActor.count
-    puts tmdb_actors
   end
 
   # load from imdb collection by a single _id
@@ -65,30 +64,35 @@ class FusedActor
   # and change some invalid hash key to be valid.
   # realize using mongo Ruby Driver 2.2
   def self.read_imdb_by_id id
-    doc = @@client[:actor].find(:_id => BSON::ObjectId(id)).first
-    fused_actor = FusedActor.new
-    fused_actor.name = doc[:name]
-    fused_actor.birthday = doc[:birthday]
-    fused_actor.gender = doc[:gender]
-    fused_actor.place_of_birth = doc[:place_of_birth]
-    fused_actor.biography = doc[:description]
-    fused_actor.nationality = doc[:nationality]
-    known_for = doc[:known_for]
-    unless known_for.nil?
-      known_for.map! { |movie| movie.sub(/\(\d\d\d\d\)/, '').strip } # remove the (year) in movie name
+    doc = @@client[:movie].find(:_id => BSON::ObjectId(id)).first
+    fused_movie = FusedMovie.new
+    fused_movie.title = doc['Title']
+    fused_movie.year = doc['Year']
+    fused_movie.rating = doc['Rating']
+    fused_movie.directors = doc['Directors']
+    casts = Hash.new
+    if doc['Role'] != nil && doc['Main Cast'] != nil && doc['Role'].length == doc['Main Cast'].length
+      doc['Role'].each do |role, i|
+        casts.merge!({role => doc['Main Cast'].values[i]})
+      end
     end
-    fused_actor.known_for = known_for
-    return fused_actor
+    fused_movie.casts = casts
+    fused_movie.main_casts = doc['Role']
+    fused_movie.total_time = doc['Total Time']
+    fused_movie.languages = doc['Language']
+    fused_movie.genre = doc['Genre']
+    fused_movie.writers = doc['Writers']
+    return fused_movie
   end
 
   # load from imdb collection by Array of _id
   # ids: Array of _id (String).
   def self.read_imdb_by_ids ids
-    fused_actors = []
+    fused_movies = []
     ids.each do |id|
-      fused_actors << (read_imdb_by_id id)
+      fused_movies << (read_imdb_by_id id)
     end
-    return fused_actors
+    return fused_movies
   end
 
   # load from imdb collection of all items
@@ -177,23 +181,3 @@ class FusedActor
     end
   end
 end
-
-#a1 = FusedActor.where(name: "Scarlett Johansson").first
-#a2 = FusedActor.first
-#a3 = FusedActor.where(name: "Scarlett Johansson").first
-#a3.name = "George Bush"
-
-
-
-#a3.gender = nil
-#a3.birthday = nil
-
-#puts a1.match?(a2)
-#puts a1.match?(a3)
-
-# ids = ImdbQuery.query_actordb_by_year 1980
-# p ids
-# as = FusedActor.read_imdb_by_ids ids
-# as.each do |a|
-#   puts a.name
-# end
