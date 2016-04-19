@@ -103,7 +103,7 @@ class FusedMovie
 
   def similarity other
     # initialize the weight of each field, the sum is 1
-    title_w, year_w, directors_w, main_casts_w = 0.4, 0.12, 0.22, 0.14, 0.12
+    title_w, year_w, directors_w, main_casts_w = 0.4, 0.15, 0.15, 0.15
     # similarity of title
     if !self.title.nil? && !other.title.nil?
       title_sim = JaccardNGrams.bigrams_sim self.title, other.title
@@ -152,7 +152,7 @@ class FusedMovie
     main_casts_w /= total_w
 
     # strict the similarity of title if all other attributes are nil
-    title_sim = JaccardNGrams.trigrams_sim self.title, other.title
+    title_sim = JaccardNGrams.trigrams_sim self.title, other.title if title_w > 0.85
 
     # compute the total similarity
     title_w * title_sim + year_w * year_sim + directors_w * directors_sim + main_casts_w * main_casts_sim

@@ -59,6 +59,29 @@ class MongeElkan
     end
     return sum_sim / array1.length
   end
+
+  def self.exact(str1, str2)
+    str1.gsub!(/,|_|-/, ' ')
+    str2.gsub!(/,|_|-/, ' ')
+    x = str1.split(/\s+/)
+    y = str2.split(/\s+/)
+    sum_sim = 0
+    x.length.times do |i|
+      max_sim = 0
+      y.length.times do |j|
+        if x[i] == y[j]
+          exact_sim = 1.0
+        else
+          exact_sim = 0.0
+        end
+        if exact_sim > max_sim
+          max_sim = exact_sim
+        end
+      end
+      sum_sim += max_sim
+    end
+    return sum_sim / x.length
+  end
 end   
 
 

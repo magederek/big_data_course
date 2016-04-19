@@ -145,8 +145,10 @@ class FusedActor
     pob_w /= total_w
     kf_w /= total_w
     # adjust the similarity of name if all other attributes are nil
-    name_sim = MongeElkan.jaccard_bigrams_simavg self.name, other.name
-
+    if n_w > 0.9
+      name_sim = MongeElkan.exact self.name, other.name
+    end
+    #
     # compute the total similarity
     n_w * name_sim + b_w * birthday_sim + g_w * gender_sim + pob_w * place_of_birth_sim + kf_w * known_for_sim
   end
@@ -178,6 +180,33 @@ class FusedActor
     else
       similarity(other) >= threshold
     end
+  end
+
+  def self.group_by_first_char array
+    groups = Hash.new
+    array.each do |elem|
+      name_a = elem.name.split(' ')
+      first_name = name_a[0]
+      last_name = name_a[-1]
+      keys = Array.new(2, '')
+      first_name.length.times do |i|
+        if first_name.slice(i) =~ /[A-Za-z]/
+          keys[0] = first_name.slice(i).downcase
+          break
+        end
+      end
+      last_name.length.times do |i|
+        if last_name.slice(i) =~ /[A-Za-z]/
+          keys[1] = last_name.slice(i).downcase
+          break
+        end
+      end
+      keys.sort!
+      key = keys[0] + keys[1]
+      groups[key] ||= []
+      groups[key] << elem
+    end
+    return groups
   end
 end
 
