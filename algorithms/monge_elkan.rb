@@ -45,6 +45,20 @@ class MongeElkan
   def self.jaccard_bigrams_simavg(str1, str2)
     return (jaccard_bigrams_sim(str1, str2) + jaccard_bigrams_sim(str2, str1)) / 2
   end
+
+  def self.name_array_sim(array1, array2)
+    sum_sim = 0
+    array1.length.times do |i|
+      max_sim = 0
+      array2.length.times do |j|
+        if jaro_winkler_simavg(array1[i], array2[j]) > max_sim
+          max_sim = jaro_winkler_simavg(array1[i], array2[j])
+        end
+      end
+      sum_sim += max_sim
+    end
+    return sum_sim / array1.length
+  end
 end   
 
 

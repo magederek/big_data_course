@@ -144,11 +144,14 @@ class FusedActor
     g_w /= total_w
     pob_w /= total_w
     kf_w /= total_w
+    # adjust the similarity of name if all other attributes are nil
+    name_sim = MongeElkan.jaccard_bigrams_simavg self.name, other.name
+
     # compute the total similarity
     n_w * name_sim + b_w * birthday_sim + g_w * gender_sim + pob_w * place_of_birth_sim + kf_w * known_for_sim
   end
 
-  def match? other, threshold = 0.95
+  def match? other, threshold = 0.85
     # similarity of name
     if !self.name.nil? && !other.name.nil?
       if self.name.split(' ').length < other.name.split(' ').length
@@ -160,7 +163,7 @@ class FusedActor
       name_sim = 0 # if some name is missing, they must be different
     end
     # the name similarity is too low, they have very high Pr to be different
-    if name_sim < 0.8
+    if name_sim < threshold
       return false
     end
     # similarity of birthday
@@ -170,7 +173,7 @@ class FusedActor
       birthday_sim = nil
     end
     # if both name and birthday similarity is very high, then they match
-    if name_sim >= 0.90 && birthday_sim == 1.0
+    if name_sim >= (1 + threshold) / 2 && birthday_sim == 1.0
       true
     else
       similarity(other) >= threshold

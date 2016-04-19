@@ -27,10 +27,10 @@ class FusedMovie
   field :filming_locations, type: Array
   field :keywords, type: Array
 
-  @@client = Mongo::Client.new(['127.0.0.1:27018'], :database => 'moviemovie', :monitoring => false)
+  @@client = Mongo::Client.new(['127.0.0.1:27018'], :database => 'movieactor', :monitoring => false)
 
   def self.parse_tmdb_movie movie
-    if movie.class != Tmdbmovie
+    if movie.class != TmdbMovie
       return nil
     else
       fused_movie = FusedMovie.new
@@ -72,8 +72,10 @@ class FusedMovie
     fused_movie.directors = doc['Directors']
     casts = Hash.new
     if doc['Role'] != nil && doc['Main Cast'] != nil && doc['Role'].length == doc['Main Cast'].length
-      doc['Role'].each do |role, i|
+      i = 0
+      doc['Role'].each do |role|
         casts.merge!({role => doc['Main Cast'].values[i]})
+        i += 1
       end
     end
     fused_movie.casts = casts
@@ -101,83 +103,99 @@ class FusedMovie
 
   def similarity other
     # initialize the weight of each field, the sum is 1
-    n_w, b_w, g_w, pob_w, kf_w = 0.5, 0.12, 0.12, 0.14, 0.12
-    # similarity of name
-    if !self.name.nil? && !other.name.nil?
-      if self.name.split(' ').length < other.name.split(' ').length
-        name_sim = MongeElkan.jaro_winkler_sim(self.name, other.name)
-      else
-        name_sim = MongeElkan.jaro_winkler_sim(other.name, self.name)
+    title_w, year_w, directors_w, main_casts_w = 0.4, 0.12, 0.22, 0.14, 0.12
+    # similarity of title
+    if !self.title.nil? && !other.title.nil?
+      title_sim = JaccardNGrams.bigrams_sim self.title, other.title
+    else
+      title_sim = 0.0 # if some name is missing, they must be different
+    end
+    # similarity of year
+    if !self.year.nil? && !other.year.nil?
+      case self.year - other.year
+        when 0 then year_sim = 1.0
+        when 1 then year_sim = 0.2
+        when -1 then year_sim = 0.2
+        else year_sim = 0.0
       end
-      # puts name_sim
     else
-      name_sim = 0 # if some name is missing, they must be different
+      year_w = year_w / 10 # lower the weight of birthday
+      year_sim = 0.0
     end
-    # similarity of birthday
-    if !self.birthday.nil? && !other.birthday.nil?
-      birthday_sim = (self.birthday == other.birthday ? 1.0 : 0)
+    # similarity of directors
+    if !self.directors.nil? && !other.directors.nil?
+      if self.directors.length >= other.directors.length
+        directors_sim = MongeElkan.name_array_sim self.directors, other.directors
+      else
+        directors_sim = MongeElkan.name_array_sim other.directors, self.directors
+      end
     else
-      b_w = b_w / 10 # lower the weight of birthday
-      birthday_sim = 0
+      directors_w = directors_w / 10 # lower the weight of birthday
+      directors_sim = 0.0
     end
-    # similarity of gender
-    if !self.gender.nil? && !other.gender.nil?
-      gender_sim = (self.gender == other.gender ? 1.0 : 0)
+    # similarity of main_casts
+    if !self.main_casts.nil? && !other.main_casts.nil?
+      if self.main_casts.length >= other.main_casts.length
+        main_casts_sim = MongeElkan.name_array_sim self.main_casts, other.main_casts
+      else
+        main_casts_sim = MongeElkan.name_array_sim other.main_casts, self.main_casts
+      end
     else
-      g_w = g_w / 10 # lower the weight of birthday
-      gender_sim = 0
-    end
-    # similarity of place_of_birth
-    if !self.place_of_birth.nil? && !other.place_of_birth.nil?
-      place_of_birth_sim = JaccardNGrams.trigrams_sim(self.place_of_birth, other.place_of_birth)
-    else
-      pob_w = pob_w / 10 # lower the weight of birthday
-      place_of_birth_sim = 0
-    end
-    # similarity of known_for
-    if !self.known_for.nil? && !other.known_for.nil?
-      known_for_sim = JaccardArray.sim(self.known_for, other.known_for)
-    else
-      kf_w = kf_w / 10 # lower the weight of birthday
-      known_for_sim = 0
+      main_casts_w = main_casts_w / 10 # lower the weight of birthday
+      main_casts_sim = 0.0
     end
     # normalize the weights
-    total_w = n_w + b_w + g_w + pob_w + kf_w
-    n_w /= total_w
-    b_w /= total_w
-    g_w /= total_w
-    pob_w /= total_w
-    kf_w /= total_w
+    total_w = title_w + year_w + directors_w + main_casts_w
+    title_w /= total_w
+    year_w /= total_w
+    directors_w /= total_w
+    main_casts_w /= total_w
+
+    # strict the similarity of title if all other attributes are nil
+    title_sim = JaccardNGrams.trigrams_sim self.title, other.title
+
     # compute the total similarity
-    n_w * name_sim + b_w * birthday_sim + g_w * gender_sim + pob_w * place_of_birth_sim + kf_w * known_for_sim
+    title_w * title_sim + year_w * year_sim + directors_w * directors_sim + main_casts_w * main_casts_sim
   end
 
-  def match? other, threshold = 0.95
+  def match? other, threshold = 0.85
     # similarity of name
-    if !self.name.nil? && !other.name.nil?
-      if self.name.split(' ').length < other.name.split(' ').length
-        name_sim = MongeElkan.jaro_winkler_sim(self.name, other.name)
-      else
-        name_sim = MongeElkan.jaro_winkler_sim(other.name, self.name)
-      end
+    if !self.title.nil? && !other.title.nil?
+      title_sim = JaccardNGrams.bigrams_sim self.title, other.title
     else
-      name_sim = 0 # if some name is missing, they must be different
+      title_sim = 0.0 # if some title is missing, they must be different
     end
-    # the name similarity is too low, they have very high Pr to be different
-    if name_sim < 0.8
+    # the title similarity is too low, they have very high Pr to be different
+    if title_sim < threshold
       return false
     end
     # similarity of birthday
-    if !self.birthday.nil? && !other.birthday.nil?
-      birthday_sim = (self.birthday == other.birthday ? 1.0 : 0)
+    if !self.year.nil? && !other.year.nil?
+      return false if (self.year - other.year).abs > 1
+      year_sim = (self.year == other.year ? 1.0 : 0.0)
     else
-      birthday_sim = nil
+      year_sim = nil
     end
     # if both name and birthday similarity is very high, then they match
-    if name_sim >= 0.90 && birthday_sim == 1.0
+    if title_sim > (1 + threshold) / 2  && year_sim == 1.0
       true
     else
       similarity(other) >= threshold
     end
+  end
+
+  def self.group_by_first_char array
+    groups = Hash.new
+    array.each do |elem, key|
+      elem.title.length.times do |i|
+        if elem.title.slice(i) =~ /[A-Za-z0-9]/
+          key = elem.title.slice(i).downcase
+          break
+        end
+      end
+      groups[key] ||= []
+      groups[key] << elem
+    end
+    return groups
   end
 end

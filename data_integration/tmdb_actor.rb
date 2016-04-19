@@ -137,6 +137,3 @@ class TmdbActor
   def to_fused_actor
   end
 end
-
-TmdbActor.json_to_db
-

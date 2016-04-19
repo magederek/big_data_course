@@ -99,7 +99,7 @@ class TmdbMovie
       movie.title = movies_hash_array[i]["title"]
       movie.year = movies_hash_array[i]["year"]
       movie.rating = movies_hash_array[i]["rating_hint"]
-      movie.directors = movies_hash_array[i]["directors"].split(', ') unless movie.directors.nil?
+      movie.directors = movies_hash_array[i]["directors"].split(', ') unless movies_hash_array[i]["directors"].nil?
       movie.casts = movies_hash_array[i]["casts"]
       movie.main_casts = movies_hash_array[i]["top_casts"]
       movie.total_time = movies_hash_array[i]["runtime"]
@@ -136,6 +136,6 @@ class TmdbMovie
   end
 end
 
-TmdbMovie.json_to_db
+# TmdbMovie.json_to_db
 
 

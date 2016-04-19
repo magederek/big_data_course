@@ -71,6 +71,16 @@ class ImdbQuery
     end
     return array
   end
+
+  def query_moviedb_all
+    array = Array.new
+    documents = client[:movie].find
+    documents.each do |document|
+      id = document["_id"].to_str
+      array.push(id)
+    end
+    return array
+  end
 end
 
 
