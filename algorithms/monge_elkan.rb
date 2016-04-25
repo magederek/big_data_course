@@ -7,6 +7,9 @@ class MongeElkan
     str2.gsub!(/,|_|-/, ' ')
     x = str1.split(/\s+/)
     y = str2.split(/\s+/)
+    if x.length == 0 || y.length == 0
+      return 0.0
+    end
     sum_sim = 0
     x.length.times do |i|
       max_sim = 0

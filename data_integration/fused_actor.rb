@@ -6,13 +6,14 @@ require_relative '../algorithms/jaccard_array'
 require_relative '../algorithms/jaccard_n_grams'
 require_relative '../algorithms/monge_elkan'
 require_relative './tmdb_actor'
+require_relative './wiki_actor'
 require_relative './imdb_query'
 
-Mongoid.load!("./mongoid.yml", :fused)
+Mongoid.load!("./mongoid.yml", :before_fused)
 
 class FusedActor
   include Mongoid::Document
-  store_in database: 'movie_actor'
+  #store_in database: 'movie_actor'
   field :name, type: String
   field :birthday, type: Date
   field :gender, type: String
@@ -22,13 +23,27 @@ class FusedActor
   field :adult_actor, type: Boolean
   field :years_active, type: String
   field :alias, type: Array
-  field :relative, type: Hash
   field :biography, type: String
   field :known_for, type: Array
+  field :match_id, type: Integer
+  field :db_name, type: String
+
+  index match_id: 1
+  index name: 1
+
+  @@current_match_id = 0
 
   @@client = Mongo::Client.new(['127.0.0.1:27018'], :database => 'movieactor', :monitoring => false)
 
-  def self.parse_tmdb_actor actor
+  def self.current_match_id
+    @@current_match_id
+  end
+
+  def self.current_match_id= (mid)
+    @@current_match_id = mid
+  end
+
+  def self.parse_tmdb_actor (actor)
     if actor.class != TmdbActor
       return nil
     else
@@ -42,6 +57,25 @@ class FusedActor
       fused_actor.alias = actor.alias
       fused_actor.biography = actor.biography
       fused_actor.known_for = actor.known_for
+      fused_actor.db_name = 'tmdb'
+      return fused_actor
+    end
+  end
+
+  def self.parse_wiki_actor actor
+    if actor.class != WikiActor
+      return nil
+    else
+      fused_actor = FusedActor.new
+      fused_actor.name = actor.name.strip
+      fused_actor.birthday = actor.birthday
+      fused_actor.gender = actor.gender
+      fused_actor.place_of_birth = actor.place_of_birth
+      fused_actor.alias = actor.alias
+      fused_actor.known_for = actor.known_for
+      fused_actor.nationality = actor.nationality
+      fused_actor.years_active = actor.years_active
+      fused_actor.db_name = 'wiki'
       return fused_actor
     end
   end
@@ -78,6 +112,7 @@ class FusedActor
       known_for.map! { |movie| movie.sub(/\(\d\d\d\d\)/, '').strip } # remove the (year) in movie name
     end
     fused_actor.known_for = known_for
+    fused_actor.db_name = 'imdb'
     return fused_actor
   end
 
@@ -188,6 +223,9 @@ class FusedActor
       name_a = elem.name.split(' ')
       first_name = name_a[0]
       last_name = name_a[-1]
+      if first_name.nil? # do not assign group if no name!
+        next
+      end
       keys = Array.new(2, '')
       first_name.length.times do |i|
         if first_name.slice(i) =~ /[A-Za-z]/

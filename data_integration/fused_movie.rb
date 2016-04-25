@@ -5,6 +5,7 @@ require_relative '../algorithms/jaccard_array'
 require_relative '../algorithms/jaccard_n_grams'
 require_relative '../algorithms/monge_elkan'
 require_relative './tmdb_movie'
+require_relative './wiki_film'
 require_relative './imdb_query'
 
 Mongoid.load!("./mongoid.yml", :fused)
@@ -46,6 +47,23 @@ class FusedMovie
       fused_movie.genre = movie.genre
       fused_movie.writers = movie.writers
       fused_movie.keywords = movie.keywords
+      return fused_movie
+    end
+  end
+
+  def self.parse_wiki_movie movie
+    if movie.class != WikiFilm
+      return nil
+    else
+      fused_movie = FusedMovie.new
+      fused_movie.title = movie.title
+      fused_movie.year = movie.year
+      fused_movie.directors = movie.directors
+      fused_movie.main_casts = movie.starring
+      fused_movie.total_time = movie.total_time
+      fused_movie.languages = movie.languages
+      fused_movie.writers = movie.writers
+      fused_movie.country = movie.country
       return fused_movie
     end
   end

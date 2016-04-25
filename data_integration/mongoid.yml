@@ -146,6 +146,36 @@ imdb:
       options:
   options:
 
+wiki:
+  # Configure available database clients. (required)
+  clients:
+    # Defines the default client. (required)
+    default:
+      # Defines the name of the default database that Mongoid can connect to.
+      # (required).
+      database: wiki
+      # Provides the hosts the default client can connect to. Must be an array
+      # of host:port pairs. (required)
+      hosts:
+        - localhost:27019
+      options:
+  options:
+
+before_fused:
+  # Configure available database clients. (required)
+  clients:
+    # Defines the default client. (required)
+    default:
+      # Defines the name of the default database that Mongoid can connect to.
+      # (required).
+      database: before_fused
+      # Provides the hosts the default client can connect to. Must be an array
+      # of host:port pairs. (required)
+      hosts:
+        - localhost:27017
+      options:
+  options:
+
 fused:
   # Configure available database clients. (required)
   clients:
@@ -153,7 +183,7 @@ fused:
     default:
       # Defines the name of the default database that Mongoid can connect to.
       # (required).
-      database: movie_actor
+      database: fused_movie_actor
       # Provides the hosts the default client can connect to. Must be an array
       # of host:port pairs. (required)
       hosts:

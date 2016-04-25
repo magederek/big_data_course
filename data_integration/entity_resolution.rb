@@ -1,53 +1,106 @@
 require_relative './fused_actor'
 require_relative './fused_movie'
-require_relative './tmdb_actor'
-require_relative './tmdb_movie'
-require_relative './imdb_query'
 require 'pp'
 
 class EntityResolution
-  def self.pairwise_match_actor_odm actor_hash1, actor_hash2
+  def self.pairwise_match_actor_odm actors1, actors2
+    Mongoid.load!("./mongoid.yml", :before_fused)
     #return nil if actor_hash1.class != Hash || actor_hash2.class != Hash
-    actors1 = actor_hash1.values[0]
-    actors2 = actor_hash2.values[0]
-    db1 = actor_hash1.keys[0]
-    db2 = actor_hash2.keys[0]
-    if actor_hash1.nil? && actor_hash2.nil?
-      return nil
-    elsif actor_hash1.values[0].nil?
+    #actors1 = actor_hash1.values[0]
+    #actors2 = actor_hash2.values[0]
+    if (actors1.nil? || actors1.length == 0) && (actors2.nil? || actors2.length == 0)
+      return []
+    elsif actors1.nil? || actors1.length == 0
       matches = []
-      actor_hash2.values[0].each do |actor|
-        matches << {db2 => actor}
+      actors2.each do |actor|
+        #if actor.match_id.nil?
+        #  actor.match_id = FusedActor.current_match_id
+        #  FusedActor.current_match_id += 1
+        #end
+        matches << [actor]
       end
       return matches
-    elsif actor_hash2.values[0].nil?
+    elsif actors2.nil? || actors2.length == 0
       matches = []
-      actor_hash1.values[0].each do |actor|
-        matches << {db1 => actor}
+      actors1.each do |actor|
+        #if actor.match_id.nil?
+        #  actor.match_id = FusedActor.current_match_id
+        #  FusedActor.current_match_id += 1
+        #end
+        matches << [actor]
       end
       return matches
     else
-      matches = Array.new  # Array: {index => {db =>actor1, db => actor2, ...}
+      matches = Array.new
       (actors1.length).times do |i|
         #100.times do |i|
-        match = Hash.new
+        match = Array.new
+        match_flag = false
         (actors2.length).times do |j|
           if actors1[i].match? actors2[j]
-            puts "#{i} match #{j}"
-            match.merge!({db2 => actors2[j]})
+            match_flag = true
+            if !actors1[i].match_id.nil?
+              actors2[j].match_id = actors1[i].match_id
+            elsif !actors2[j].match_id.nil?
+              actors1[i].match_id = actors2[j].match_id
+            elsif actors1[i].match_id.nil? && actors2[j].match_id.nil?
+              actors1[i].match_id = FusedActor.current_match_id
+              actors2[j].match_id = FusedActor.current_match_id
+              actors1[i].save
+              actors2[j].save
+              FusedActor.current_match_id += 1
+            end
+            match << actors1[i]
+            match << actors2[j]
+            matches << match
             actors2.slice!(j)
+            puts "#{i} match #{j}"
             break
           end
         end
-        match.merge!({db1 => actors1[i]})
-        matches << match
+        unless match_flag
+          #if actors1[i].match_id.nil?
+          #  actors1[i].match_id = FusedActor.current_match_id
+          #  FusedActor.current_match_id += 1
+          #end
+          matches << [actors1[i]]
+        end
         puts "Comparing actor #{i} ..." if i % 10 == 0
       end
       actors2.length.times do |i|
-        matches << {db2 => actors2[i]}
+        #if actors2[i].match_id.nil?
+        #  actors2[i].match_id = FusedActor.current_match_id
+        #  FusedActor.current_match_id += 1
+        #end
+        matches << [actors2[i]]
       end
       return matches
     end
+  end
+
+  def self.pairwise_match_actor_groups array
+    matches_tmdb_imdb = []
+    for i in 0..(array.length - 1)
+      for j in (i + 1)..(array.length - 1)
+        matches_tmdb_imdb = []
+        actor_key_compared = []
+        puts "Begin to pairwise match #{array[i].values[0][0].db_name} & #{array[j].values[0][0].db_name}..."
+        other = array[j].clone
+        array[i].each_key do |key|
+          puts "================ Matching in Group \"#{key}\" =================="
+          actor_key_compared << key
+          matches_tmdb_imdb.concat(pairwise_match_actor_odm(array[i][key], other[key]))
+        end
+
+        other.each_key do |key|
+          unless actor_key_compared.include? key
+            print "#{key}, "
+            matches_tmdb_imdb.concat(pairwise_match_actor_odm(nil, other[key]))
+          end
+        end
+      end
+    end
+    matches_tmdb_imdb
   end
 
   # input : ({db1 => movies2}, {db2 => movies2})
@@ -97,6 +150,7 @@ class EntityResolution
 
   def self.actor_linkage
     puts "Reading from TMDB ..."
+    Mongoid.load!("./mongoid.yml", :tmdb)
     tmdb_actors_orignal = TmdbActor.all
     tmdb_actors = Array.new
     tmdb_actors_orignal.each do |actor|
@@ -108,56 +162,89 @@ class EntityResolution
     imdb_query = ImdbQuery.new
     imdb_ids = imdb_query.query_actordb_all
     imdb_actors = FusedActor.read_imdb_by_ids imdb_ids
-#imdb_actors = imdb_actors[0, 500]
+
+    puts "Reading from WIKI ..."
+    Mongoid.load!("./mongoid.yml", :wiki)
+    wiki_actors_orignal = WikiActor.all
+    wiki_actors = Array.new
+    wiki_actors_orignal.each do |actor|
+      wiki_actor = FusedActor.parse_wiki_actor actor
+      wiki_actors<< wiki_actor
+    end
 
     puts "TMDB #: #{tmdb_actors.length}"
     puts "IMDB #: #{imdb_actors.length}"
+    puts "WIKI #: #{wiki_actors.length}"
 
     puts "Sorting by name ..."
     tmdb_actors.sort! { |a, b| a.name <=> b.name }
     imdb_actors.sort! { |a, b| a.name <=> b.name }
+    wiki_actors.sort! { |a, b| a.name <=> b.name }
+
+    puts "Initialize before_fused data in database ..."
+    Mongoid.load!("./mongoid.yml", :before_fused)
+    FusedActor.delete_all
+    tmdb_actors.each do |actor|
+      actor.save
+    end
+    imdb_actors.each do |actor|
+      actor.save
+    end
+    wiki_actors.each do |actor|
+      actor.save
+    end
 
 # test group by
     puts "Grouping by first character of firstname and lastname ..."
     tmdb_actor_groups = FusedActor.group_by_first_char tmdb_actors
     imdb_actor_groups = FusedActor.group_by_first_char imdb_actors
+    wiki_actor_groups = FusedActor.group_by_first_char wiki_actors
 
     tmdb_count = 0
     imdb_count = 0
+    wiki_count = 0
 
     tmdb_actor_groups.values.each do |array|
       tmdb_count += array.length
     end
+    tmdb_actor_groups_clone = tmdb_actor_groups.clone
     imdb_actor_groups.values.each do |array|
       imdb_count += array.length
     end
+    imdb_actor_groups_clone = imdb_actor_groups.clone
+    wiki_actor_groups.values.each do |array|
+      wiki_count += array.length
+    end
+    wiki_actor_groups_clone = imdb_actor_groups.clone
     puts "tmdb #: #{tmdb_count}"
     p tmdb_actor_groups.keys
     puts "imdb #: #{imdb_count}"
     p imdb_actor_groups.keys
+    puts "wiki #: #{wiki_count}"
+    p wiki_actor_groups.keys
 
     puts tmdb_actor_groups.length
     puts imdb_actor_groups.length
+    puts wiki_actor_groups.length
 
-    puts "Begin to pairwise match ..."
-    actor_key_compared = []
-    matches_tmdb_imdb = []
-    tmdb_actor_groups.each_key do |key|
-      puts "================ Matching in Group \"#{key}\" =================="
-      actor_key_compared << key
-      matches_tmdb_imdb.concat(pairwise_match_actor_odm({tmdb: tmdb_actor_groups[key]}, {imdb: imdb_actor_groups[key]}))
-    end
+    matches_tmdb_imdb = pairwise_match_actor_groups([tmdb_actor_groups, imdb_actor_groups, wiki_actor_groups])
 
-    p actor_key_compared
+    #puts "Begin to pairwise match IMDB & TMDB..."
+    #actor_key_compared = []
+    #matches_tmdb_imdb = []
+    #tmdb_actor_groups.each_key do |key|
+    #  puts "================ Matching in Group \"#{key}\" =================="
+    #  actor_key_compared << key
+    #  matches_tmdb_imdb.concat(pairwise_match_actor_odm({tmdb: tmdb_actor_groups[key]}, {imdb: imdb_actor_groups[key]}))
+    #end
 
-    imdb_actor_groups.each_key do |key|
-      unless actor_key_compared.include? key
-        print "#{key}, "
-        imdb_actor_groups[key].each do |actor|
-          matches_tmdb_imdb << {imdb: actor}
-        end
-      end
-    end
+    #imdb_actor_groups.each_key do |key|
+    #  unless actor_key_compared.include? key
+    #    print "#{key}, "
+    #    matches_tmdb_imdb.concat(pairwise_match_actor_odm({tmdb: nil}, {imdb: imdb_actor_groups[key]}))
+    #  end
+    #end
+
 
 #matches_tmdb_imdb = EntityResolution.pairwise_match_actor_odm({tmdb: tmdb_actors}, {imdb: imdb_actors})
     puts "Entities found: #{matches_tmdb_imdb.length}"
@@ -165,12 +252,14 @@ class EntityResolution
     matches_tmdb_imdb.each do |match|
       if match.length > 0
         pairwise_matches += 1
-        match.each_value do |value|
-          puts "#{value.name}: #{value.birthday}, #{value.place_of_birth}, #{value.known_for}"
+        match.each do |value|
+          #puts "#{value.name}: #{value.birthday}, #{value.place_of_birth}, #{value.known_for}"
+          puts "#{value.name}: #{value.match_id}"
         end
         puts
       end
     end
+    puts "FusedActor.current_match_id = #{FusedActor.current_match_id}"
     puts "Pairwise Matches = #{pairwise_matches}"
   end
 
@@ -250,6 +339,7 @@ class EntityResolution
       end
     end
     puts "Pairwise Matches = #{pairwise_matches}"
+
   end
 end
 
