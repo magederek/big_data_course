@@ -6,6 +6,7 @@ data_fusion = DataFusion.new
 puts "Read Done!"
 puts data_fusion.linked_actor.length
 puts data_fusion.linked_movie.length
+=begin
 data_fusion.linked_actor.each do |match_actors|
   if match_actors.length > 2 && (match_actors[0].name != match_actors[1].name || match_actors[0].name != match_actors[2].name || match_actors[1].name != match_actors[2].name)
     match_actors.each do |actor|
@@ -23,3 +24,7 @@ data_fusion.linked_movie.each do |match_movies|
     puts
   end
 end
+=end
+
+data_fusion.fuse_movie
+data_fusion.fuse_actor

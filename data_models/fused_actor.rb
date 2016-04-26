@@ -26,6 +26,7 @@ class FusedActor
   field :match_id, type: Integer
   field :db_name, type: String
 
+
   index match_id: 1
   index name: 1
 
