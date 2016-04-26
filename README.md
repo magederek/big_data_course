@@ -33,10 +33,12 @@ Source code of the big data course, including the crawling program, schema of da
 ####1. Data Acquisition
 Use the cawlers to crawl data of movies and actors from <http://themoviedb.org/>, <http://www.imdb.com/>
  and <https://www.wikipedia.org/>. The original data are stored in files of JSON and XML format.
+
 ####2. Data Cleaning
 Before the data are stored in the database, some cleaning and adjustment is performed to
 remove the data unwanted and modify the format of the attribute-value. After then, the data
 from different source are saved into different database with different schemas.
+
 ####3. Entity Resolution
 One of the crucial steps is Entity Resolution which is to link different entries those refer to the
 same entity in reality. We use blocking + pairwise matching to perform the data linkage. Several string
@@ -44,10 +46,12 @@ similarity algorithms are used in this stage, including Jaccard Coefficient, Jar
 At the end of the step, all of the entries are stored in the same database using the same schema.
 Each entry with the linkage to other entry in different database will be assigned an _match_id_.
 In other words, entries refer to the same entity will have the same _match_id_.
+
 ####4. Data Fusion
 This step is to merge the entries with the same _match_id_. We use the methods of weighted voting,
 longest string, etc., to finish data fusion. At the end of this stage, different entries with the
 same _match_id_ are merge into one, and all of the data are saved into a separate final database.
+
 ####5. Data Portal Coding
 We use lite Ruby web framework Rails/Sinatra to finish the web page of the data portal.
 
@@ -69,6 +73,7 @@ We use lite Ruby web framework Rails/Sinatra to finish the web page of the data 
   * keywords: Array
   * match_id: Integer
   * db_name: String
+
 ####2. fused_actors
   * name: String
   * birthday: Date
