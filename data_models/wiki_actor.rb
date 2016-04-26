@@ -28,7 +28,7 @@ class WikiActor
 
   # field :acting, type: Hash
   def self.json_to_db
-    Mongoid.load!("./mongoid.yml", :wiki)
+    Mongoid.load!('../data_models/mongoid.yml', :wiki)
     ### Read json file
     actor_json = []
     actors_hash_array = []

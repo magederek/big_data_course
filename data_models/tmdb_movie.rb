@@ -6,7 +6,7 @@ require 'date'
 Encoding.default_external = 'UTF-8'
 Encoding.default_internal = 'UTF-8'
 
-Mongoid.load!("./mongoid.yml", :tmdb)
+Mongoid.load!('../data_models/mongoid.yml', :tmdb)
 
 class TmdbMovie
   include Mongoid::Document
@@ -27,7 +27,7 @@ class TmdbMovie
   field :status, type: String
 # 257175
   def self.json_to_db num_of_final = 20000
-    Mongoid.load!("./mongoid.yml", :tmdb)
+    Mongoid.load!('../data_models/mongoid.yml', :tmdb)
 
     num_of_movies = 257175
 

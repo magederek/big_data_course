@@ -28,7 +28,7 @@ class WikiFilm
   
 
   def self.json_to_db
-    Mongoid.load!("./mongoid.yml", :wiki)
+    Mongoid.load!('../data_models/mongoid.yml', :wiki)
     film_json = []
     films_hash_array = []
     puts "Reading from JSON file..."

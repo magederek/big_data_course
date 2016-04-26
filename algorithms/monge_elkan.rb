@@ -1,6 +1,7 @@
 require 'jaro_winkler'
 require 'jaccard'
 require_relative './jaccard_n_grams.rb'
+
 class MongeElkan
   def self.jaro_winkler_sim(str1, str2)
     str1.gsub!(/,|_|-/, ' ')

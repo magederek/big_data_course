@@ -8,11 +8,10 @@ require_relative './tmdb_movie'
 require_relative './wiki_film'
 require_relative './imdb_query'
 
-Mongoid.load!("./mongoid.yml", :fused)
 
 class FusedMovie
   include Mongoid::Document
-  store_in database: 'mongoid'
+  #store_in database: 'mongoid'
   field :title, type: String
   field :year, type: Integer
   field :rating, type: Float
@@ -27,8 +26,23 @@ class FusedMovie
   field :writers, type: Array
   field :filming_locations, type: Array
   field :keywords, type: Array
+  field :match_id, type: Integer
+  field :db_name, type: String
+
+  index match_id: 1
+  index title: 1
+
+  @@current_match_id = 0
 
   @@client = Mongo::Client.new(['127.0.0.1:27018'], :database => 'movieactor', :monitoring => false)
+
+  def self.current_match_id
+    @@current_match_id
+  end
+
+  def self.current_match_id= (mid)
+    @@current_match_id = mid
+  end
 
   def self.parse_tmdb_movie movie
     if movie.class != TmdbMovie
@@ -47,6 +61,7 @@ class FusedMovie
       fused_movie.genre = movie.genre
       fused_movie.writers = movie.writers
       fused_movie.keywords = movie.keywords
+      fused_movie.db_name = 'tmdb'
       return fused_movie
     end
   end
@@ -64,6 +79,7 @@ class FusedMovie
       fused_movie.languages = movie.languages
       fused_movie.writers = movie.writers
       fused_movie.country = movie.country
+      fused_movie.db_name = 'wiki'
       return fused_movie
     end
   end
@@ -102,6 +118,7 @@ class FusedMovie
     fused_movie.languages = doc['Language']
     fused_movie.genre = doc['Genre']
     fused_movie.writers = doc['Writers']
+    fused_movie.db_name = 'imdb'
     return fused_movie
   end
 

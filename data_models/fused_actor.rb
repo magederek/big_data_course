@@ -9,8 +9,6 @@ require_relative './tmdb_actor'
 require_relative './wiki_actor'
 require_relative './imdb_query'
 
-Mongoid.load!("./mongoid.yml", :before_fused)
-
 class FusedActor
   include Mongoid::Document
   #store_in database: 'movie_actor'

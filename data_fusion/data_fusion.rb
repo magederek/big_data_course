@@ -1,5 +1,5 @@
-require_relative './fused_actor'
-require_relative './fused_movie'
+require_relative '../data_models/fused_actor'
+require_relative '../data_models/fused_movie'
 require 'pp'
 require 'json'
 
@@ -13,7 +13,7 @@ class DataFusion
   def initialize
     @linked_actor = []
     @linked_movie = []
-    Mongoid.load!("./mongoid.yml", :before_fused)
+    Mongoid.load!('../data_models/mongoid.yml', :before_fused)
     for i in 0..(FusedActor.count - 1)
       if (data = FusedActor.where(match_id: i)) != []
         @linked_actor << data
@@ -37,25 +37,11 @@ class DataFusion
   end
 
   def fuse_actor
-    Mongoid.load!("./mongoid.yml", :fused)
+    Mongoid.load!('../data_models/mongoid.yml', :fused)
   end
 
   def fuse_movie
-    Mongoid.load!("./mongoid.yml", :fused)
+    Mongoid.load!('../data_models/mongoid.yml', :fused)
   end
 end
 
-puts "Reading from Database ..."
-data_fusion = DataFusion.new
-puts "Read Done!"
-puts data_fusion.linked_actor.length
-data_fusion.linked_actor.each do |match_actors|
-  if match_actors.length > 1
-    match_actors.each do |actor|
-      puts "#{actor.match_id}: #{actor.name}"
-    end
-    puts
-  end
-end
-#puts data_fusion.linked_actor.length
-#puts data_fusion.linked_movie.length

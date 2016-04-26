@@ -3,12 +3,9 @@ require 'json'
 require 'pp'
 require 'date'
 require 'nokogiri'
-#require_relative './fused_actor'
 
 Encoding.default_external = 'UTF-8'
 Encoding.default_internal = 'UTF-8'
-
-Mongoid.load!("./mongoid.yml", :tmdb)
 
 class TmdbActor
   include Mongoid::Document
@@ -27,7 +24,7 @@ class TmdbActor
   
   def self.json_to_db nom_of_final = 20000
     Nokogiri::
-    Mongoid.load!("./mongoid.yml", :tmdb)
+    Mongoid.load!('../data_models/mongoid.yml', :tmdb)
 
     num_of_casts = 90202
 

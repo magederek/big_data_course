@@ -19,6 +19,8 @@ class JaccardNGrams
   def self.trigrams_sim(str1, str2)
     str1 = '  ' + str1 + '  '
     str2 = '  ' + str2 + '  '
+    str1.downcase!
+    str2.downcase!
     x = []
     y = []
     (str1.length - 2).times do |i|
