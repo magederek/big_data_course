@@ -149,8 +149,8 @@ class FusedMovie
     if !self.year.nil? && !other.year.nil?
       case self.year - other.year
         when 0 then year_sim = 1.0
-        when 1 then year_sim = 0.2
-        when -1 then year_sim = 0.2
+        when 1 then year_sim = 0.8
+        when -1 then year_sim = 0.8
         else year_sim = 0.0
       end
     else
@@ -159,10 +159,11 @@ class FusedMovie
     end
     # similarity of directors
     if !self.directors.nil? && !other.directors.nil?
-      if self.directors.length >= other.directors.length
-        directors_sim = MongeElkan.name_array_sim self.directors, other.directors
+      intersect_num = JaccardArray.intersect(self.directors, other.directors)
+      if intersect_num > 0
+        directors_sim = 1.0
       else
-        directors_sim = MongeElkan.name_array_sim other.directors, self.directors
+        directors_sim = 0
       end
     else
       directors_w = directors_w / 10 # lower the weight of birthday
@@ -170,10 +171,13 @@ class FusedMovie
     end
     # similarity of main_casts
     if !self.main_casts.nil? && !other.main_casts.nil?
-      if self.main_casts.length >= other.main_casts.length
-        main_casts_sim = MongeElkan.name_array_sim self.main_casts, other.main_casts
-      else
-        main_casts_sim = MongeElkan.name_array_sim other.main_casts, self.main_casts
+      intersect_num = JaccardArray.intersect(self.main_casts, other.main_casts)
+      if intersect_num == 1
+        main_casts_sim = 0.9
+      elsif intersect_num == 2
+        main_casts_sim = 0.98
+      else intersect_num > 2
+      main_casts_sim = 1.0
       end
     else
       main_casts_w = main_casts_w / 10 # lower the weight of birthday
@@ -187,7 +191,7 @@ class FusedMovie
     main_casts_w /= total_w
 
     # strict the similarity of title if all other attributes are nil
-    title_sim = JaccardNGrams.trigrams_sim self.title, other.title if title_w > 0.85
+    title_sim = JaccardNGrams.trigrams_sim self.title.downcase, other.title.downcase if title_w > 0.85
 
     # compute the total similarity
     title_w * title_sim + year_w * year_sim + directors_w * directors_sim + main_casts_w * main_casts_sim
@@ -232,5 +236,26 @@ class FusedMovie
       groups[key] << elem
     end
     return groups
+  end
+
+  def equals(other)
+    if(self.title == other.title &&
+        self.year == other.year &&
+        self.rating == other.rating &&
+        self.directors == other.directors &&
+        self.casts == other.casts &&
+        self.main_casts == other.main_casts &&
+        self.total_time == other.total_time &&
+        self.languages == other.languages &&
+        self.alias == other.alias &&
+        self.country == other.country &&
+        self.genre == other.genre &&
+        self.writers == other.writers &&
+        self.filming_locations == other.filming_locations &&
+        self.keywords == other.keywords)
+      return true
+    else
+      return false
+    end
   end
 end

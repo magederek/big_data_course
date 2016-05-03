@@ -202,9 +202,27 @@ class EntityResolution
     imdb_actors.each do |actor|
       actor.save
     end
+    # deduplicate
+    flag = Hash.new(false)
+    wiki_actors.length.times do |i|
+      next if flag[i]
+      for j in (i+1)..(wiki_actors.length-1)
+        if (wiki_actors[i].equals wiki_actors[j]) && !(wiki_actors[i].eql? wiki_actors[j])
+          flag[j] = true
+        end
+        if !(wiki_actors[i].equals wiki_actors[j])
+          break
+        end
+      end
+      wiki_actors[i].save
+    end
+    flag = nil
+    wiki_actors = FusedActor.where({db_name: 'wiki'})
+=begin
     wiki_actors.each do |actor|
       actor.save
     end
+=end
 
 # test group by
     puts "Grouping by first character of firstname and lastname ..."
@@ -275,12 +293,6 @@ class EntityResolution
     wiki_movies.sort! { |a, b| a.title <=> b.title }
     puts wiki_movies[0].db_name
 
-    # test group by
-    puts "Grouping by first character of title ..."
-    tmdb_movie_groups = FusedMovie.group_by_first_char tmdb_movies
-    imdb_movie_groups = FusedMovie.group_by_first_char imdb_movies
-    wiki_movie_groups = FusedMovie.group_by_first_char wiki_movies
-
     puts "Initialize before_fused data in database ..."
     Mongoid.load!('../data_models/mongoid.yml', :before_fused)
     FusedMovie.delete_all
@@ -290,9 +302,29 @@ class EntityResolution
     imdb_movies.each do |movie|
       movie.save
     end
-    wiki_movies.each do |movie|
-      movie.save
+    # deduplicate
+    flag = Hash.new(false)
+    wiki_movies.length.times do |i|
+      next if flag[i]
+      for j in (i+1)..(wiki_movies.length-1)
+        if (wiki_movies[i].equals wiki_movies[j]) && !(wiki_movies[i].eql? wiki_movies[j])
+          flag[j] = true
+        end
+        unless (wiki_movies[i].equals wiki_movies[j])
+          break
+        end
+      end
+      wiki_movies[i].save
     end
+    flag = nil
+    wiki_movies = FusedMovie.where({db_name: 'wiki'})
+
+    # test group by
+    puts "Grouping by first character of title ..."
+    tmdb_movie_groups = FusedMovie.group_by_first_char tmdb_movies
+    imdb_movie_groups = FusedMovie.group_by_first_char imdb_movies
+    wiki_movie_groups = FusedMovie.group_by_first_char wiki_movies
+
 
     tmdb_count = 0
     imdb_count = 0

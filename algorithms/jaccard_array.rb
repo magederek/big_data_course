@@ -17,6 +17,18 @@ class JaccardArray
     end
     return intersect.to_f / (array1.length + array2.length - intersect)
   end
+
+  def self.intersect(array1, array2, threshold: 0.85)
+    count = 0
+    array1.each do |a1|
+      array2.each do |a2|
+        if JaccardNGrams.trigrams_sim(a1, a2) > threshold
+          count += 1
+        end
+      end
+    end
+    count
+  end
 end
 
 # puts JaccardArray.sim(["Barack Obama", "John", "Derek"], ["John", "B. Obama", "David"])

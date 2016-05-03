@@ -61,6 +61,7 @@ class DataFusion
       vote_yearsactive = Hash.new(0.0)
       union_alias = []
       union_knownfor = []
+      union_acting = []
       union_biography = ''
       match_id = nil
       db_names = ''
@@ -82,6 +83,7 @@ class DataFusion
         vote_yearsactive[actor_in_row.years_active] += weight unless actor_in_row.years_active.nil?
         union_alias |= actor_in_row.alias unless actor_in_row.alias.nil?
         union_biography += (actor_in_row.biography + "\n") unless actor_in_row.biography.nil?
+        union_acting |= actor_in_row.acting unless actor_in_row.acting.nil?
         union_knownfor |= actor_in_row.known_for unless actor_in_row.known_for.nil?
         match_id = actor_in_row.match_id
         db_names += "#{actor_in_row.db_name};"
@@ -96,6 +98,7 @@ class DataFusion
       actor.years_active = vote_yearsactive.key(vote_yearsactive.values.max)
       actor.alias = union_alias
       actor.biography = union_biography
+      actor.acting = union_acting
       actor.known_for = union_knownfor
       actor.match_id = match_id
       actor.db_name = db_names
@@ -176,6 +179,11 @@ class DataFusion
       current_i += 1
       puts "Fusing Movie #{current_i} ..." if current_i % 1000 == 0
     end
+  end
+
+  def deduplicate_actor
+    Mongoid.load!('../data_models/mongoid.yml', :fused)
+
   end
 end
 

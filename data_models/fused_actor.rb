@@ -23,6 +23,7 @@ class FusedActor
   field :alias, type: Array
   field :biography, type: String
   field :known_for, type: Array
+  field :acting, type: Array
   field :match_id, type: Integer
   field :db_name, type: String
 
@@ -56,6 +57,12 @@ class FusedActor
       fused_actor.alias = actor.alias
       fused_actor.biography = actor.biography
       fused_actor.known_for = actor.known_for
+      acting_array = []
+      actor.acting.each_pair do |key, value|
+        entry = {movie: key, cast: value}
+        acting_array << entry
+      end
+      fused_actor.acting = acting_array
       fused_actor.db_name = 'tmdb'
       return fused_actor
     end
@@ -145,7 +152,17 @@ class FusedActor
     end
     # similarity of birthday
     if !self.birthday.nil? && !other.birthday.nil?
-      birthday_sim = (self.birthday == other.birthday ? 1.0 : 0)
+      if self.birthday == other.birthday
+        birthday_sim = 1.0
+      elsif self.birthday.month == other.birthday.month && self.birthday.day == other.birthday.day
+        birthday_sim = 0.9
+      elsif (self.birthday - other.birthday).to_i < 32
+        birthday_sim = 0.8
+      elsif (self.birthday - other.birthday).to_i < 366 && self.birthday.day == other.birthday.day
+        birthday_sim = 0.6
+      else
+        birthday_sim = 20.0 / (self.birthday - other.birthday).to_i.abs
+      end
     else
       b_w = b_w / 10 # lower the weight of birthday
       birthday_sim = 0
@@ -159,14 +176,23 @@ class FusedActor
     end
     # similarity of place_of_birth
     if !self.place_of_birth.nil? && !other.place_of_birth.nil?
-      place_of_birth_sim = JaccardNGrams.trigrams_sim(self.place_of_birth, other.place_of_birth)
+      place_of_birth_sim = JaccardNGrams.bigrams_sim(self.place_of_birth, other.place_of_birth)
     else
       pob_w = pob_w / 10 # lower the weight of birthday
       place_of_birth_sim = 0
     end
-    # similarity of known_for
+    # similarity of known_for. If at least two of the known_for is match, then similarity = 1
     if !self.known_for.nil? && !other.known_for.nil?
-      known_for_sim = JaccardArray.sim(self.known_for, other.known_for)
+      intersect_num = JaccardArray.intersect(self.known_for, other.known_for)
+      if intersect_num == 1
+        known_for_sim = 0.9
+      elsif intersect_num == 2
+        known_for_sim = 0.98
+      elsif intersect_num > 2
+        known_for_sim = 1.0
+      else
+        known_for_sim = 0
+      end
     else
       kf_w = kf_w / 10 # lower the weight of birthday
       known_for_sim = 0
@@ -244,6 +270,25 @@ class FusedActor
       groups[key] << elem
     end
     return groups
+  end
+
+  def equals(other)
+    if(self.name == other.name &&
+        self.birthday == other.birthday &&
+        self.gender == other.gender &&
+        self.place_of_birth == other.place_of_birth &&
+        self.nationality == other.nationality &&
+        self.known_credits == other.known_credits &&
+        self.adult_actor == other.adult_actor &&
+        self.years_active == other.years_active &&
+        self.alias == other.alias &&
+        self.biography == other.biography &&
+        self.known_for == other.known_for &&
+        self.acting == other.acting)
+      return true
+    else
+      return false
+    end
   end
 end
 

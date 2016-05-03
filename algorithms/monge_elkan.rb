@@ -64,9 +64,9 @@ class MongeElkan
     return sum_sim / array1.length
   end
 
-  def self.exact(str1, str2)
-    str1.gsub!(/,|_|-/, ' ')
-    str2.gsub!(/,|_|-/, ' ')
+  def self.exact(string1, string2)
+    str1 = string1.gsub(/,|_|-/, ' ').downcase
+    str2 = string2.gsub(/,|_|-/, ' ').downcase
     x = str1.split(/\s+/)
     y = str2.split(/\s+/)
     sum_sim = 0
